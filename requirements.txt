@@ -1,0 +1,7 @@
+# Astro Runtime includes the following pre-installed providers packages: https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
+requests
+beautifulsoup4
+openai
+bs4
+lxml
+arxiv
