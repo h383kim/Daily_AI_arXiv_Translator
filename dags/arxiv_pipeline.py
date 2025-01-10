@@ -4,7 +4,7 @@ import re
 import tarfile
 import requests
 import concurrent.futures
-import openai  # GPT 사용을 위한 openai 라이브러리
+import openai  # openai library to use GPT API
 from bs4 import BeautifulSoup
 import logging
 import shutil
@@ -82,7 +82,7 @@ def arxiv_pipeline():
 
     @task
     def extract_arxiv_id(url: str) -> str:
-        """URL에서 arXiv ID를 추출"""
+        """Extracting arXiv ID from URL"""
         logging.debug(f"Extracting arXiv ID from URL: {url}")
         arxiv_id = url.split('/')[-1] if 'arxiv.org' in url else url
         logging.debug(f"Extracted arXiv ID: {arxiv_id}")
@@ -90,7 +90,7 @@ def arxiv_pipeline():
 
     @task
     def remove_latex_commands(text: str) -> str:
-        # CJK* 관련 내용을 자동으로 대체
+        # Auto-replacement of CJK* related
         text = re.sub(r'\\begin{CJK\*}\{.*?\}\{.*?\}', '', text)
         text = re.sub(r'\\end{CJK\*}', '', text)
 
@@ -201,7 +201,7 @@ def arxiv_pipeline():
 
     @task
     def add_custom_font_to_tex(tex_file_path: str, font_name: str = "Noto Sans KR", mono_font_name: str = "Noto Sans KR"):
-        """텍스트 파일에 사용자 지정 폰트를 추가"""
+        """Adding user designated font to the files"""
         logging.info(f"Adding custom font '{font_name}' to TeX file: {tex_file_path}")
         remove_cjk_related_lines(tex_file_path)
         font_setup = rf"""
@@ -227,7 +227,7 @@ def arxiv_pipeline():
 
     @task
     def remove_cjk_related_lines(tex_file_path: str):
-        """텍스트 파일에서 CJK 관련 패키지와 설정을 제거"""
+        """Removing CJK related packages and settings from text files"""
         logging.info(f"Removing CJK related lines from TeX file: {tex_file_path}")
 
         cjk_related_keywords = [
@@ -380,7 +380,7 @@ def arxiv_pipeline():
 
     @task
     def extract_tar_gz(tar_file_path: str, extract_to: str):
-        """tar.gz 파일을 지정된 디렉토리로 추출"""
+        """Extracting tar.gz file to designated directory"""
         logging.info(f"Extracting tar.gz file: {tar_file_path} to {extract_to}")
 
         try:
@@ -393,7 +393,7 @@ def arxiv_pipeline():
 
     @task
     def find_main_tex_file(directory: str) -> str:
-        """디렉토리에서 'documentclass'를 포함한 main .tex 파일 찾기"""
+        """Finding main .tex file that includes 'documentclass'"""
         logging.info(f"Searching for main .tex file in directory: {directory}")
 
         candidate_files = []
@@ -407,21 +407,21 @@ def arxiv_pipeline():
             try:
                 with open(file, 'r', encoding='utf-8') as f:
                     contents = f.read()
-                    # \documentclass가 있는 파일을 찾기
+                    # Looking for file with \documentclass
                     if r'\documentclass' in contents:
-                        # 메인 파일인지 확인하기 위해 패키지 포함 여부와 환경 설정 등을 확인
+                        # To verify main file, check packages and environment settings
                         if any(keyword in contents for keyword in [r'\begin{document}', r'\usepackage', r'\title', r'\author']):
                             logging.debug(f"Main candidate .tex file found: {file}")
                             main_candidates.append(file)
             except Exception as e:
                 logging.error(f"Failed to read file {file}: {e}")
 
-        # main 후보들 중 첫 번째 파일을 반환
+        # Return the very first file from main
         if main_candidates:
             logging.debug(f"Selected main .tex file: {main_candidates[0]}")
             return main_candidates[0]
 
-        # 메인 파일 후보가 없으면, 크기가 가장 큰 .tex 파일 반환
+        # If there's no main file candidate, transform the largest .tex file
         if candidate_files:
             main_tex = max(candidate_files, key=os.path.getsize, default=None)
             logging.debug(f"No clear main file found, selected by size: {main_tex}")
@@ -433,7 +433,7 @@ def arxiv_pipeline():
 
     @task
     def compile_main_tex(directory: str, arxiv_id: str, font_name: str = "Noto Sans KR"):
-        """메인 .tex 파일을 컴파일하여 PDF 생성"""
+        """Compile main .tex file to create PDF"""
         logging.info(f"Compiling main .tex file in directory: {directory}")
 
         main_tex_path = find_main_tex_file(directory)
@@ -446,7 +446,7 @@ def arxiv_pipeline():
 
     @task
     def compile_tex_to_pdf(tex_file_path: str, arxiv_id: str, compile_twice: bool = True):
-        """텍스트 파일을 PDF로 컴파일"""
+        """Compile .txt file into .pdf"""
         logging.info(f"Compiling TeX file to PDF: {tex_file_path}")
 
         tex_dir = os.path.dirname(tex_file_path)
@@ -478,7 +478,7 @@ def arxiv_pipeline():
     @task
     def download_arxiv_intro_and_tex(arxiv_id: str, download_dir: str, target_language: str = "Korean",
                                     font_name: str = "Noto Sans KR"):
-        """arXiv 논문 정보 및 텍스트 파일을 다운로드하고 번역"""
+        """Download and translate arXiv info and text file"""
         logging.info(f"Downloading and processing arXiv paper: {arxiv_id}")
 
         arxiv_url = f"https://export.arxiv.org/api/query?id_list={arxiv_id}"
@@ -520,7 +520,7 @@ def arxiv_pipeline():
 
         extract_to = os.path.join(download_dir, arxiv_id)
 
-        # 기존 arxiv_id 폴더가 존재하면 삭제
+        # delete if arxiv_id exists already
         if os.path.exists(extract_to):
             logging.info(f"Existing directory found: {extract_to}. Deleting it.")
             shutil.rmtree(extract_to)
@@ -533,8 +533,8 @@ def arxiv_pipeline():
 
     @task
     def translate_abstract():
-        # GPT API 호출을 위한 설정
-        openai.api_key = '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'  # Your OpenAI API Key
+        # Settings for GPT API Request
+        openai.api_key = 'YOUR_API_KEY_HERE'  # Your OpenAI API Key
 
 
     # Pipeline
